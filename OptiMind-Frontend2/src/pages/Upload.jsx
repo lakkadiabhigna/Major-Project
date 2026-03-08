@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function Upload() {
   const [file, setFile] = useState(null);
@@ -9,10 +10,16 @@ export default function Upload() {
   const [progress, setProgress] = useState(0);
 
   const [results, setResults] = useState([]);
-  const [csvData, setCsvData] = useState("");   // ✅ NEW
+  const [csvData, setCsvData] = useState(""); // ✅ NEW
+  const navigate = useNavigate();
 
   const canValidate = useMemo(() => !!file, [file]);
-  const canRun = useMemo(() => validated && status === "Ready", [validated, status]);
+  const canRun = useMemo(
+    () => validated && status === "Ready",
+    [validated, status],
+  );
+
+  const [analysisData, setAnalysisData] = useState(null);
 
   const onPickFile = (e) => {
     setFileErr("");
@@ -20,7 +27,7 @@ export default function Upload() {
     setStatus("Idle");
     setProgress(0);
     setResults([]);
-    setCsvData("");   // ✅ reset csv
+    setCsvData(""); // ✅ reset csv
 
     const f = e.target.files?.[0];
     if (!f) return;
@@ -80,10 +87,10 @@ export default function Upload() {
       }
 
       setResults(data.data);
-      setCsvData(data.csv);   // ✅ STORE CSV
+      setCsvData(data.csv); // ✅ STORE CSV
+      setAnalysisData(data.analysis);
       setProgress(100);
       setStatus("Completed");
-
     } catch (err) {
       console.error(err);
       setStatus("Failed");
@@ -113,7 +120,10 @@ export default function Upload() {
         Upload CSV
       </h2>
 
-      <div className="aboutCard" style={{ maxWidth: 950, margin: "18px auto", textAlign: "left" }}>
+      <div
+        className="aboutCard"
+        style={{ maxWidth: 950, margin: "18px auto", textAlign: "left" }}
+      >
         <div className="aboutTitle">Upload & Process</div>
 
         <input
@@ -123,7 +133,11 @@ export default function Upload() {
           style={{ width: "100%", marginTop: 12 }}
         />
 
-        {file && <div style={{ marginTop: 10 }}>Selected: <b>{file.name}</b></div>}
+        {file && (
+          <div style={{ marginTop: 10 }}>
+            Selected: <b>{file.name}</b>
+          </div>
+        )}
 
         {fileErr && (
           <div style={{ marginTop: 12, color: "#ffb4b4", fontWeight: 700 }}>
@@ -142,8 +156,20 @@ export default function Upload() {
 
           {/* ✅ DOWNLOAD BUTTON */}
           {results.length > 0 && (
-            <button onClick={downloadCsv}>
-              Download Results
+            <button onClick={downloadCsv}>Download Results</button>
+          )}
+
+          {analysisData && (
+            <button
+              onClick={() => {
+                localStorage.setItem(
+                  "forecast_analysis",
+                  JSON.stringify(analysisData),
+                );
+                navigate("/dashboard");
+              }}
+            >
+              View Analysis
             </button>
           )}
         </div>
@@ -155,7 +181,10 @@ export default function Upload() {
 
       {/* 🔥 DISPLAY RESULTS */}
       {results.length > 0 && (
-        <div className="aboutCard" style={{ maxWidth: 1200, margin: "20px auto" }}>
+        <div
+          className="aboutCard"
+          style={{ maxWidth: 1200, margin: "20px auto" }}
+        >
           <h3>Forecast Results</h3>
 
           <div style={{ overflowX: "auto" }}>
@@ -163,7 +192,10 @@ export default function Upload() {
               <thead>
                 <tr>
                   {Object.keys(results[0]).map((key) => (
-                    <th key={key} style={{ borderBottom: "1px solid #ccc", padding: 8 }}>
+                    <th
+                      key={key}
+                      style={{ borderBottom: "1px solid #ccc", padding: 8 }}
+                    >
                       {key}
                     </th>
                   ))}

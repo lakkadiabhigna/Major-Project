@@ -1,119 +1,311 @@
 import React, { useEffect, useState } from "react";
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
-export default function Dashboard() {
-  const [history, setHistory] = useState([]);
-  const [kpis, setKpis] = useState({
-    totalSkus: 0,
-    skuNeedingRestock: 0,
-    skuOverstockRisk: 0,
-    serviceLevel: 0,
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+
+const downloadPDF = () => {
+  const input = document.getElementById("dashboard-report");
+
+  html2canvas(input).then((canvas) => {
+    const imgData = canvas.toDataURL("image/png");
+
+    const pdf = new jsPDF("p", "mm", "a4");
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+
+    // Report Title
+    pdf.setFontSize(18);
+    pdf.text("Demand Forecast Analysis Report", pageWidth / 2, 15, {
+      align: "center",
+    });
+
+    // Generated Date
+    pdf.setFontSize(11);
+    pdf.text(
+      `Generated on: ${new Date().toLocaleDateString()}`,
+      pageWidth / 2,
+      22,
+      { align: "center" },
+    );
+
+    const imgWidth = 190;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    // Dashboard Image
+    pdf.addImage(imgData, "PNG", 10, 30, imgWidth, imgHeight);
+
+    pdf.save("Demand_Forecast_Report.pdf");
   });
-
-  const [status, setStatus] = useState("Idle");
-  const [progress, setProgress] = useState(0);
+};
+export default function Dashboard() {
+  const [analysis, setAnalysis] = useState(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem("opt_run_history");
-    if (saved) setHistory(JSON.parse(saved));
-
-    const latest = localStorage.getItem("opt_latest_kpis");
-    if (latest) setKpis(JSON.parse(latest));
-
-    const savedStatus = localStorage.getItem("opt_latest_status");
-    if (savedStatus) setStatus(savedStatus);
-
-    const savedProgress = localStorage.getItem("opt_latest_progress");
-    if (savedProgress) setProgress(Number(savedProgress));
+    const saved = localStorage.getItem("forecast_analysis");
+    if (saved) {
+      setAnalysis(JSON.parse(saved));
+    }
   }, []);
 
+  if (!analysis) {
+    return (
+      <div style={{ padding: 40, textAlign: "center" }}>
+        <h2>No Analysis Available</h2>
+        <p>Please upload a dataset to generate the dashboard.</p>
+      </div>
+    );
+  }
+  // if (!analysis) {
+  //   return (
+  //     <div className="page">
+  //       <h2 className="sectionHeading">Analysis</h2>
+  //       <p>No analysis data available. Run a forecast first.</p>
+  //     </div>
+  //   );
+  // }
+  const chartData = analysis.top_products.map((p) => ({
+    sku: p.SKU_ID,
+    demand: p.Forecasted_Demand,
+  }));
+
+  const demandDistribution = [
+    { range: "0-50", count: 0 },
+    { range: "50-100", count: 0 },
+    { range: "100-200", count: 0 },
+    { range: "200+", count: 0 },
+  ];
+
+  analysis?.top_products?.forEach((p) => {
+    const d = p.Forecasted_Demand;
+
+    if (d <= 50) demandDistribution[0].count++;
+    else if (d <= 100) demandDistribution[1].count++;
+    else if (d <= 200) demandDistribution[2].count++;
+    else demandDistribution[3].count++;
+  });
+
+  const trendData =
+    analysis?.top_products?.map((p, i) => ({
+      week: `Week ${i + 1}`,
+      demand: p.Forecasted_Demand,
+    })) || [];
   return (
     <div className="page">
-      <h2 className="sectionHeading">Dashboard</h2>
-      <p className="subtext" style={{ whiteSpace: "normal" }}>
-        View run status, KPIs and history. Use the Upload page to upload CSV and generate results.
-      </p>
+      <h2 className="sectionHeading" style={{ marginBottom: 30 }}>
+        Forecast Analysis
+      </h2>
+      <button
+        onClick={downloadPDF}
+        style={{
+          padding: "10px 16px",
+          background: "#4CAF50",
+          color: "white",
+          border: "none",
+          borderRadius: "8px",
+          cursor: "pointer",
+          marginBottom: "20px",
+        }}
+      >
+        Download Analysis Report (PDF)
+      </button>
+      <div id="dashboard-report">
+        {/* SUMMARY CARDS */}
+        <div className="aboutCard" style={{ marginTop: 20 }}>
+          <div className="aboutTitle">Summary Insights</div>
 
-      {/* Processing Status */}
-      <div className="aboutCard" style={{ marginTop: 14 }}>
-        <div className="aboutTitle">Processing Status</div>
-
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 12 }}>
-          <div style={{ flex: "1 1 220px" }}>
-            <div className="kpiLabel">Current Status</div>
-            <div className="kpiValue" style={{ fontSize: 20 }}>
-              {status}
-            </div>
-          </div>
-
-          <div style={{ flex: "2 1 420px" }}>
-            <div className="kpiLabel">Progress</div>
-            <div style={progressWrap}>
-              <div style={{ ...progressFill, width: `${progress}%` }} />
-            </div>
-            <div style={{ marginTop: 8, color: "rgba(255,255,255,0.65)" }}>{progress}%</div>
+          <div className="kpiGrid" style={{ marginTop: 15 }}>
+            <KPI label="Total Products" value={analysis.total_products} />
+            <KPI
+              label="Average Demand"
+              value={analysis.avg_demand.toFixed(2)}
+            />
+            <KPI label="Top SKUs" value={analysis.top_products.length} />
+            <KPI label="Low Demand SKUs" value={analysis.low_products.length} />
           </div>
         </div>
-      </div>
 
-      {/* Summary KPIs */}
-      <div className="aboutCard" style={{ marginTop: 14 }}>
-        <div className="aboutTitle">Summary KPIs</div>
+        {/* ALERT SECTION */}
 
-        <div className="kpiGrid" style={{ marginTop: 12 }}>
-          <KPI label="Total SKUs processed" value={kpis.totalSkus || "—"} />
-          <KPI label="SKUs needing restock" value={kpis.skuNeedingRestock || "—"} />
-          <KPI label="Overstock risk SKUs" value={kpis.skuOverstockRisk || "—"} />
-          <KPI
-            label="Service level (placeholder)"
-            value={kpis.serviceLevel ? `${kpis.serviceLevel}%` : "—"}
-          />
+        <div className="aboutCard" style={{ marginBottom: 20 }}>
+          <div className="aboutTitle">Smart Alerts</div>
+
+          {analysis.alerts.map((alert, i) => (
+            <div
+              key={i}
+              style={{
+                padding: 12,
+                marginTop: 10,
+                borderRadius: 10,
+                background:
+                  alert.type === "high"
+                    ? "rgba(255,80,80,0.15)"
+                    : "rgba(255,200,80,0.15)",
+                border: "1px solid rgba(255,255,255,0.1)",
+              }}
+            >
+              {alert.message}
+            </div>
+          ))}
         </div>
-      </div>
 
-      {/* Run History */}
-      <div className="aboutCard" style={{ marginTop: 14 }}>
-        <div className="aboutTitle">Run History</div>
+        {/* DEMAND VISUALIZATION */}
+        <div
+          className="aboutCard"
+          style={{
+            marginTop: 20,
+            padding: 20,
+          }}
+        >
+          <div className="aboutTitle">Demand Visualization</div>
 
-        {history.length === 0 ? (
-          <div style={{ marginTop: 10, color: "rgba(255,255,255,0.7)" }}>
-            No runs yet. Go to Upload page and run once to see history here.
+          <div style={{ width: "100%", height: 320 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData}>
+                <XAxis dataKey="sku" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="demand" fill="#4CAF50" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-        ) : (
-          <div style={{ marginTop: 12, overflowX: "auto" }}>
+        </div>
+
+        {/* DEMAND TREND */}
+        <div
+          className="aboutCard"
+          style={{
+            marginTop: 20,
+            padding: 20,
+          }}
+        >
+          <div className="aboutTitle">Demand Trend</div>
+
+          <div style={{ width: "100%", height: 320 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={trendData}>
+                <XAxis dataKey="week" />
+                <YAxis />
+                <Tooltip />
+                <Line
+                  type="monotone"
+                  dataKey="demand"
+                  stroke="#4CAF50"
+                  strokeWidth={3}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* DEMAND DISTRIBUTION HISTOGRAM */}
+        <div
+          className="aboutCard"
+          style={{
+            marginTop: 20,
+            padding: 20,
+          }}
+        >
+          <div className="aboutTitle">Demand Distribution</div>
+
+          <div style={{ width: "100%", height: 320 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={demandDistribution}>
+                <XAxis dataKey="range" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="count" fill="#8884d8" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 20,
+            marginTop: 20,
+          }}
+        >
+          {/* TOP PRODUCTS */}
+          <div className="aboutCard">
+            <div className="aboutTitle">Top Demand Products</div>
+
             <table style={tableStyle}>
               <thead>
                 <tr>
-                  <th style={thStyle}>Time</th>
-                  <th style={thStyle}>File</th>
-                  <th style={thStyle}>Total SKUs</th>
-                  <th style={thStyle}>Status</th>
+                  <th style={thStyle}>SKU</th>
+                  <th style={thStyle}>Demand</th>
                 </tr>
               </thead>
               <tbody>
-                {history.map((h) => (
-                  <tr key={h.id}>
-                    <td style={tdStyle}>{h.time}</td>
-                    <td style={tdStyle}>{h.fileName}</td>
-                    <td style={tdStyle}>{h.totalSkus}</td>
-                    <td style={tdStyle}>{h.status}</td>
+                {analysis.top_products.map((p, i) => (
+                  <tr key={i}>
+                    <td style={tdStyle}>{p.SKU_ID}</td>
+                    <td style={tdStyle}>{p.Forecasted_Demand}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
 
-            <div style={{ marginTop: 12 }}>
-              <button
-                className="navBtn"
-                onClick={() => {
-                  localStorage.removeItem("opt_run_history");
-                  setHistory([]);
-                }}
-              >
-                Clear History
-              </button>
+          {/* LOW PRODUCTS */}
+          <div className="aboutCard">
+            <div className="aboutTitle">Low Demand Products</div>
+
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>SKU</th>
+                  <th style={thStyle}>Demand</th>
+                </tr>
+              </thead>
+              <tbody>
+                {analysis.low_products.map((p, i) => (
+                  <tr key={i}>
+                    <td style={tdStyle}>{p.SKU_ID}</td>
+                    <td style={tdStyle}>{p.Forecasted_Demand}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* AI INSIGHTS */}
+          <div className="aboutCard" style={{ marginTop: 20 }}>
+            <div className="aboutTitle">AI Business Insights</div>
+
+            <div style={{ marginTop: 15 }}>
+              {analysis.insights.map((item, i) => (
+                <div
+                  key={i}
+                  style={{
+                    padding: 14,
+                    marginBottom: 12,
+                    borderRadius: 12,
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                  }}
+                >
+                  <div style={{ marginTop: 6, fontWeight: 700 }}>
+                    Manager Action
+                  </div>
+                  <div style={{ opacity: 0.8 }}>{item.Manager_Explanation}</div>
+                </div>
+              ))}
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -121,26 +313,34 @@ export default function Dashboard() {
 
 function KPI({ label, value }) {
   return (
-    <div className="kpi">
-      <div className="kpiLabel">{label}</div>
-      <div className="kpiValue">{value}</div>
+    <div
+      className="kpi"
+      style={{
+        padding: 20,
+        borderRadius: 16,
+        background: "rgba(255,255,255,0.05)",
+        border: "1px solid rgba(255,255,255,0.12)",
+        backdropFilter: "blur(8px)",
+        textAlign: "center",
+      }}
+    >
+      <div className="kpiLabel" style={{ fontSize: 12 }}>
+        {label}
+      </div>
+
+      <div
+        className="kpiValue"
+        style={{
+          fontSize: 26,
+          fontWeight: 700,
+          marginTop: 6,
+        }}
+      >
+        {value}
+      </div>
     </div>
   );
 }
-
-const progressWrap = {
-  height: 14,
-  borderRadius: 999,
-  border: "1px solid rgba(255,255,255,0.14)",
-  background: "rgba(255,255,255,0.06)",
-  overflow: "hidden",
-};
-
-const progressFill = {
-  height: "100%",
-  borderRadius: 999,
-  background: "linear-gradient(135deg, rgba(34,197,94,0.95), rgba(124,58,237,0.95))",
-};
 
 const tableStyle = {
   width: "100%",
@@ -153,15 +353,14 @@ const tableStyle = {
 
 const thStyle = {
   textAlign: "left",
-  padding: "12px 12px",
+  padding: "12px",
   fontSize: 12,
   color: "rgba(255,255,255,0.65)",
   background: "rgba(255,255,255,0.04)",
-  borderBottom: "1px solid rgba(255,255,255,0.10)",
 };
 
 const tdStyle = {
-  padding: "12px 12px",
+  padding: "12px",
   borderBottom: "1px solid rgba(255,255,255,0.08)",
   color: "rgba(255,255,255,0.85)",
 };
