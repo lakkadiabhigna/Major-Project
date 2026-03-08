@@ -1,0 +1,453 @@
+# ============================================================
+# OPTIMIND — LSTM PIPELINE (PARAMETERIZED)
+# ============================================================
+def run_optimind_pipeline(
+    df,
+    model,
+    scaler_X,
+    scaler_y,
+    le,
+    groq_api_key
+):
+    import pandas as pd
+    import numpy as np
+    from groq import Groq
+    import os
+
+    # -----------------------------
+    # CONFIG
+    # -----------------------------
+    LOOKBACK = 28
+    ORDER_COST = 500
+    UNIT_COST = 10
+    HOLDING_RATE = 0.2
+    SERVICE_LEVEL_Z = 1.65
+    LEAD_TIME = 14
+    HOLDING_COST = UNIT_COST * HOLDING_RATE
+
+    os.environ["GROQ_API_KEY"] = groq_api_key
+
+    print("✅ Model & artifacts received")
+
+    # -----------------------------
+    # FIX SKU FORMAT IF NUMERIC
+    # -----------------------------
+    if np.issubdtype(df["SKU_ID"].dtype, np.number):
+        df["SKU_ID"] = le.inverse_transform(df["SKU_ID"].astype(int))
+
+    df["SKU_ID"] = df["SKU_ID"].astype(str).str.strip()
+    valid_skus = set(df["SKU_ID"]).intersection(set(le.classes_))
+    df = df[df["SKU_ID"].isin(valid_skus)]
+    print(f"✅ Valid SKUs found: {len(valid_skus)}")
+
+    # -----------------------------
+    # SORT & PREPROCESS
+    # -----------------------------
+    df["Date"] = pd.to_datetime(df["Date"])
+    df = df.sort_values(["SKU_ID", "Date"])
+    df["Encoded_SKU"] = le.transform(df["SKU_ID"])
+    df["Units_Sold_Log"] = np.log1p(df["Units_Sold"])
+
+    # -----------------------------
+    # FORECASTING
+    # -----------------------------
+    forecast_rows = []
+    for sku, sku_df in df.groupby("Encoded_SKU"):
+        if len(sku_df) < LOOKBACK:
+            continue
+        original_name = le.inverse_transform([sku])[0]
+        last_28 = sku_df["Units_Sold_Log"].values[-LOOKBACK:]
+        window = scaler_X.transform(last_28.reshape(-1,1)).reshape(1,LOOKBACK,1)
+        preds_30, temp_window = [], window.copy()
+        for i in range(30):
+            pred_scaled = model.predict(temp_window, verbose=0)
+            pred_log = scaler_y.inverse_transform(pred_scaled)[0][0]
+            pred = np.expm1(pred_log)
+            preds_30.append(pred)
+            temp_window = np.roll(temp_window, -1, axis=1)
+            new_scaled = scaler_X.transform([[np.log1p(pred)]])
+            temp_window[0,-1,0] = new_scaled
+
+        monthly_demand = sum(preds_30)
+        avg_daily = monthly_demand / 30
+        std = avg_daily * 0.3
+        eoq = np.sqrt((2 * monthly_demand * ORDER_COST) / HOLDING_COST)
+        rop = (avg_daily * LEAD_TIME) + SERVICE_LEVEL_Z * std * np.sqrt(LEAD_TIME)
+
+        forecast_rows.append({
+            "SKU_ID": original_name,
+            "Forecasted_Demand": round(monthly_demand, 2),
+            "EOQ": int(eoq),
+            "ROP": int(rop)
+        })
+
+    forecast_df = pd.DataFrame(forecast_rows)
+    print("✅ Forecasting completed")
+    print("Total SKUs forecasted:", len(forecast_df))
+
+    # -----------------------------
+    # ADD EXPLANATIONS
+    # -----------------------------
+    forecast_df["Demand_Explanation"] = forecast_df.apply(
+        lambda row: f"Demand for {row['SKU_ID']} is driven by recent 28-day sales momentum captured by the LSTM forecasting model.",
+        axis=1
+    )
+    forecast_df["Inventory_Explanation"] = forecast_df.apply(
+        lambda row: f"Order {row['EOQ']} units and reorder when stock reaches {row['ROP']} units.",
+        axis=1
+    )
+
+    # -----------------------------
+    # LLM MANAGER EXPLANATION
+    # -----------------------------
+    client = Groq(api_key=groq_api_key)
+    manager_explanations = []
+    for _, row in forecast_df.iterrows():
+        try:
+            prompt = f"""
+You are a senior retail demand analyst.
+
+SKU: {row['SKU_ID']}
+Predicted Monthly Demand: {row['Forecasted_Demand']}
+EOQ: {row['EOQ']}
+ROP: {row['ROP']}
+
+Model insight:
+{row['Demand_Explanation']}
+
+Inventory logic:
+{row['Inventory_Explanation']}
+
+Explain in EXACTLY 5 sections:
+1. Demand Summary
+2. Momentum Insight
+3. Inventory Insight
+4. Risk Factors
+5. Manager Action
+
+Keep under 250 words.
+End with: End of report.
+"""
+            response = client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[{"role":"user","content":prompt}],
+                temperature=0.5,
+                max_tokens=500
+            )
+            explanation = response.choices[0].message.content.strip()
+        except Exception as e:
+            explanation = f"LLM generation failed: {str(e)}"
+        manager_explanations.append(explanation)
+
+    forecast_df["Manager_Explanation"] = manager_explanations
+    return forecast_df
+
+
+
+# ============================================================
+# M5 TRANSFORMER — FULL PIPELINE (PARAMETERIZED)
+# ============================================================
+def run_m5_transformer_full_pipeline(
+    df,
+    model,
+    scaler,
+    config,
+    groq_api_key
+):
+    import pandas as pd
+    import numpy as np
+    import shap
+    import os
+    from tqdm import tqdm
+    from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+    from groq import Groq
+
+    SEQ_LEN = config["SEQ_LEN"]
+    os.environ["GROQ_API_KEY"] = groq_api_key
+    print("✅ Artifacts received for Transformer")
+
+    # ==========================================================
+    # 2️⃣ LOAD USER DATA
+    # ==========================================================
+    print("🔍 Validating uploaded dataset...")
+    if "id" not in df.columns:
+        print("⚠️ 'id' column missing → Creating auto id")
+        df["id"] = ["SKU_" + str(i) for i in range(len(df))]
+    df["id"] = df["id"].astype(str)
+    required_extra_ids = ["item_id","dept_id","cat_id","store_id","state_id"]
+    for col in required_extra_ids:
+        if col not in df.columns:
+            print(f"⚠️ '{col}' missing → Creating dummy column")
+            df[col] = "Unknown"
+
+    day_cols = [c for c in df.columns if c.startswith("d_")]
+    if len(day_cols) == 0:
+        raise ValueError("❌ No daily columns found (must start with 'd_')")
+    try:
+        day_cols = sorted(day_cols, key=lambda x: int(x.split("_")[1]))
+    except:
+        raise ValueError("❌ Daily columns must follow format d_1, d_2, ...")
+    if len(day_cols) < SEQ_LEN:
+        raise ValueError(f"❌ At least {SEQ_LEN} daily columns required, but only {len(day_cols)} found")
+    df[day_cols] = df[day_cols].apply(pd.to_numeric, errors="coerce")
+    if df[day_cols].isnull().sum().sum() > 0:
+        raise ValueError("❌ Daily sales columns contain non-numeric values")
+    print("✅ Dataset validation successful\n")
+
+    # ==========================================================
+    # 3️⃣ MELT TO LONG FORMAT
+    # ==========================================================
+    sales_long = df.melt(
+        id_vars=["id","item_id","dept_id","cat_id","store_id","state_id"],
+        var_name="day",
+        value_name="sales"
+    )
+    sales_long["day"] = sales_long["day"].str.replace("d_", "").astype(int)
+    sales_long = sales_long.sort_values(["id","day"])
+
+    # ==========================================================
+    # 4️⃣ FEATURE ENGINEERING
+    # ==========================================================
+    sales_long["day_sin"]  = np.sin(2*np.pi*sales_long["day"]/365)
+    sales_long["day_cos"]  = np.cos(2*np.pi*sales_long["day"]/365)
+    sales_long["week_sin"] = np.sin(2*np.pi*sales_long["day"]/7)
+    sales_long["week_cos"] = np.cos(2*np.pi*sales_long["day"]/7)
+    sales_long["sales_log"] = np.log1p(sales_long["sales"])
+    sales_long["sales_scaled"] = scaler.transform(sales_long[["sales_log"]])
+
+    # ==========================================================
+    # 5️⃣ BUILD LAST SEQUENCES
+    # ==========================================================
+    X, y, sku_ids = [], [], []
+    for sku, g in sales_long.groupby("id"):
+        g = g.sort_values("day")
+        feats = g[["sales_scaled","day_sin","day_cos","week_sin","week_cos"]].values
+        target = g["sales_scaled"].values
+        if len(feats) < SEQ_LEN:
+            continue
+        X.append(feats[-SEQ_LEN:])
+        y.append(target[-1])
+        sku_ids.append(sku)
+
+    X_test = np.array(X)
+    y_test = np.array(y)
+    print("Sequences ready:", X_test.shape)
+
+    # ==========================================================
+    # 6️⃣ PREDICTION
+    # ==========================================================
+    pred_scaled = model.predict(X_test, verbose=0).flatten()
+
+    # ==========================================================
+    # 7️⃣ INVERSE SCALING
+    # ==========================================================
+    y_log = scaler.inverse_transform(y_test.reshape(-1,1)).flatten()
+    p_log = scaler.inverse_transform(pred_scaled.reshape(-1,1)).flatten()
+    y_real = np.expm1(y_log)
+    p_real = np.expm1(p_log)
+
+    # ==========================================================
+    # 8️⃣ METRICS
+    # ==========================================================
+    from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+    mae  = mean_absolute_error(y_real, p_real)
+    rmse = np.sqrt(mean_squared_error(y_real, p_real))
+    r2   = r2_score(y_real, p_real)
+    print("\nTEST PERFORMANCE (REAL SCALE)")
+    print("MAE :", round(mae,4))
+    print("RMSE:", round(rmse,4))
+    print("R2  :", round(r2,4))
+
+    # ==========================================================
+    # 9️⃣ SHAP EXPLANATIONS
+    # ==========================================================
+    print("Computing SHAP explanations...")
+    background = X_test[:50]
+    explainer = shap.GradientExplainer(model, background)
+    shap_values = explainer.shap_values(X_test)
+    if isinstance(shap_values, list):
+        shap_values = shap_values[0]
+    if shap_values.ndim == 4:
+        shap_values = shap_values[:,:,:,0]
+    feature_names = ["sales_scaled","day_sin","day_cos","week_sin","week_cos"]
+    top_features = []
+    for i in range(shap_values.shape[0]):
+        sv = shap_values[i]
+        importance = np.abs(sv).mean(axis=0)
+        idx = np.argsort(-importance)[:3]
+        top_features.append([feature_names[int(j)] for j in idx])
+    print("✅ SHAP explanations generated")
+
+    # ==========================================================
+    # 🔟 GROQ MANAGER REPORT
+    # ==========================================================
+    client = Groq(api_key=groq_api_key)
+    def generate_report(sku, forecast, drivers):
+        prompt = f"""
+You are a senior retail demand forecasting analyst.
+
+SKU: {sku}
+Predicted Next-Day Demand: {forecast:.2f}
+Top Drivers: {', '.join(drivers)}
+
+Write a concise professional report with:
+
+1. Demand Outlook
+2. Key Drivers
+3. Business Impact
+4. Suggested Action
+
+Keep under 250 words.
+End with: End of report.
+"""
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role":"user","content":prompt}],
+            temperature=0.5,
+            max_tokens=500
+        )
+        return response.choices[0].message.content.strip()
+
+    print("Generating manager explanations...")
+    reports = [generate_report(sku_ids[i], p_real[i], top_features[i]) for i in range(len(sku_ids))]
+
+    results = pd.DataFrame({
+        "SKU_ID": sku_ids,
+        "Actual_Demand": y_real,
+        "Predicted_Demand": p_real,
+        "MAE_per_SKU": np.abs(y_real - p_real),
+        "Top_Demand_Drivers": ["; ".join(f) for f in top_features],
+        "Manager_Explanation": reports
+    })
+
+    return results
+
+
+
+# ============================================================
+# AUTO FORECASTING SELECTOR
+# ============================================================
+def run_auto_forecasting_pipeline(
+    df,
+    lstm_model,
+    lstm_scaler_X,
+    lstm_scaler_y,
+    lstm_le,
+    transformer_model,
+    transformer_scaler,
+    transformer_config,
+    groq_api_key
+):
+    total_rows = len(df)
+    print(f"📊 Uploaded dataset rows: {total_rows}")
+
+    if total_rows > 100:
+        print("🚀 Running Transformer Model")
+        return run_m5_transformer_full_pipeline(
+            df,
+            transformer_model,
+            transformer_scaler,
+            transformer_config,
+            groq_api_key
+        )
+    else:
+        print("⚡ Running LSTM Model")
+        return run_optimind_pipeline(
+            df,
+            lstm_model,
+            lstm_scaler_X,
+            lstm_scaler_y,
+            lstm_le,
+            groq_api_key
+        )
+
+
+
+# ============================================================
+# FUNCTION TO LOAD ALL REQUIRED ARTIFACTS AND INPUT FILE
+# ============================================================
+def load_all_inputs(
+    lstm_model_path,
+    lstm_scaler_X_path,
+    lstm_scaler_y_path,
+    lstm_le_path,
+    transformer_model_path,
+    transformer_scaler_path,
+    transformer_config_path,
+    groq_api_key,
+    test_file_path
+):
+    import joblib
+    import pandas as pd
+    from tensorflow.keras.models import load_model
+    import json
+
+    # LSTM artifacts
+    lstm_model = load_model(lstm_model_path)
+    lstm_scaler_X = joblib.load(lstm_scaler_X_path)
+    lstm_scaler_y = joblib.load(lstm_scaler_y_path)
+    lstm_le = joblib.load(lstm_le_path)
+
+    # Transformer artifacts
+    import tensorflow as tf
+    transformer_model = tf.keras.models.load_model(transformer_model_path)
+    transformer_scaler = joblib.load(transformer_scaler_path)
+    with open(transformer_config_path, "r") as f:
+        transformer_config = json.load(f)
+
+    # Test dataset
+    df_test = pd.read_csv(test_file_path)
+
+    return (df_test, lstm_model, lstm_scaler_X, lstm_scaler_y, lstm_le,
+            transformer_model, transformer_scaler, transformer_config, groq_api_key)
+
+
+
+# ============================================================
+# CALLING EVERYTHING
+# ============================================================
+# Example paths (replace with actual file paths)
+lstm_model_path = r"model-and-input-files\global_lstm_forecast_model.h5"
+lstm_scaler_X_path = r"model-and-input-files\scaler_X.pkl"
+lstm_scaler_y_path = r"model-and-input-files\scaler_y.pkl"
+lstm_le_path = r"model-and-input-files\sku_encoder.pkl"
+
+transformer_model_path = r"model-and-input-files\m5_transformer.keras"
+transformer_scaler_path = r"model-and-input-files\scaler.pkl"
+transformer_config_path = r"model-and-input-files\config.json"
+
+groq_api_key = "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"
+test_file_path = r"model-and-input-files\user_uploaded_test_dataset.csv"
+
+# Load everything
+(df_test, lstm_model, lstm_scaler_X, lstm_scaler_y, lstm_le,
+ transformer_model, transformer_scaler, transformer_config,
+ groq_api_key) = load_all_inputs(
+    lstm_model_path,
+    lstm_scaler_X_path,
+    lstm_scaler_y_path,
+    lstm_le_path,
+    transformer_model_path,
+    transformer_scaler_path,
+    transformer_config_path,
+    groq_api_key,
+    test_file_path
+)
+
+# Run auto forecasting pipeline
+output_df = run_auto_forecasting_pipeline(
+    df_test,
+    lstm_model,
+    lstm_scaler_X,
+    lstm_scaler_y,
+    lstm_le,
+    transformer_model,
+    transformer_scaler,
+    transformer_config,
+    groq_api_key
+)
+
+# Save output
+output_df.to_csv("final_forecasting_output.csv", index=False)
+print("🎉 FINAL OUTPUT GENERATED")
+output_df.head()
