@@ -1,7 +1,10 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function Upload() {
+  useEffect(() => {
+    localStorage.removeItem("forecast_analysis");
+  }, []);
   const [file, setFile] = useState(null);
   const [fileErr, setFileErr] = useState("");
   const [validated, setValidated] = useState(false);

@@ -10,7 +10,7 @@ export default function About() {
       </p>
 
       {/* WHAT IT ENABLES */}
-      <div className="aboutSection">
+      <div className="aboutSection" id="how">
         <h2 className="sectionHeading">What OptiMind Enables</h2>
 
         <div className="aboutGrid">
@@ -32,7 +32,7 @@ export default function About() {
       </div>
 
       {/* PROBLEM */}
-      <div className="aboutSection">
+      <div className="aboutSection" id="problem">
         <h2 className="sectionHeading">The Problem</h2>
 
         <div className="aboutGrid">
@@ -66,7 +66,7 @@ export default function About() {
       </div>
 
       {/* SOLUTION */}
-      <div className="aboutSection">
+      <div className="aboutSection" id="solution">
         <h2 className="sectionHeading">Our Solution</h2>
 
         <div className="aboutGrid">

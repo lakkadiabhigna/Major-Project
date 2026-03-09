@@ -26,7 +26,7 @@ export default function Login() {
         return;
       }
 
-      navigate("/dashboard");
+      navigate("/");
     } catch {
       setErr("Server error");
     }
