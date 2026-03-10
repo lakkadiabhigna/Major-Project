@@ -51,21 +51,6 @@
 #     allow_methods=["*"],
 #     allow_headers=["*"],
 # )
-
-# # ✅ Step 3: CORS fix (cookies won't work with "*")
-# # app.add_middleware(
-# #     CORSMiddleware,
-# #     allow_origins=[
-# #         "http://localhost:5173",
-# #         "http://127.0.0.1:5173",
-# #     ],
-# #     allow_credentials=True,
-# #     allow_methods=["*"],
-# #     allow_headers=["*"],
-# # )
-
-
-
 # # ============================================================
 # # ✅ Step 4: AUTH (Signup/Login/Remember User using httpOnly cookie)
 # # ============================================================
@@ -293,6 +278,7 @@
 #     content={
 #         "status": "success",
 #         "rows": len(result_df),
+#         "model_type": model_type,
 #         "data": data_json,
 #         "csv": csv_string,
 #         "analysis": dashboard_analysis
@@ -315,7 +301,7 @@
 #     uvicorn.run(app, host="0.0.0.0", port=port)
 
 
-# backend/server.py
+# # backend/server.py
 
 import os
 import json
@@ -363,26 +349,15 @@ print("✅ MongoDB connected (Atlas)")
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# ✅ Step 3: CORS fix (cookies won't work with "*")
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=[
-#         "http://localhost:5173",
-#         "http://127.0.0.1:5173",
-#     ],
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
-
-
-
 # ============================================================
 # ✅ Step 4: AUTH (Signup/Login/Remember User using httpOnly cookie)
 # ============================================================
@@ -549,6 +524,50 @@ def generate_dashboard_analysis(df):
         print("❌ Analysis Error:", str(e))
         return {}
 
+def generate_transformer_analysis(df):
+
+    try:
+
+        total_products = len(df)
+
+        avg_predicted_demand = float(df["Predicted_Demand"].mean())
+
+        top_products = (
+            df.nlargest(5, "Predicted_Demand")[
+                ["SKU_ID", "Predicted_Demand", "Manager_Explanation"]
+            ].to_dict(orient="records")
+        )
+
+        low_products = (
+            df.nsmallest(5, "Predicted_Demand")[
+                ["SKU_ID", "Predicted_Demand", "Manager_Explanation"]
+            ].to_dict(orient="records")
+        )
+
+        demand_distribution = df["Predicted_Demand"].tolist()
+
+        insights = (
+            df[["SKU_ID", "Manager_Explanation"]]
+            .head(5)
+            .to_dict(orient="records")
+        )
+
+        analysis = {
+            "total_products": total_products,
+            "avg_predicted_demand": avg_predicted_demand,
+            "top_products": top_products,
+            "low_products": low_products,
+            "demand_distribution": demand_distribution,
+            "insights": insights
+        }
+
+        return analysis
+
+    except Exception as e:
+        print("❌ Transformer Analysis Error:", str(e))
+        return {}
+    
+
 def generate_alerts(df):
 
     alerts = []
@@ -600,6 +619,11 @@ async def forecast(file: UploadFile = File(...)):
     os.getenv("GROQ_API_KEY"),
 )
         dashboard_analysis = generate_dashboard_analysis(result_df)
+
+        if model_type == "lstm":
+            dashboard_analysis = generate_dashboard_analysis(result_df)
+        else:
+            dashboard_analysis = generate_transformer_analysis(result_df)
 
         print("✅ Pipeline finished. Rows:", len(result_df))
 

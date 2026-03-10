@@ -8,6 +8,7 @@ import DemoReport from "./pages/DemoReport.jsx";
 import Login from "./pages/Login.jsx";
 import Signup from "./pages/Signup.jsx";
 import Upload from "./pages/Upload.jsx";
+import TransformerDashboard from "./pages/TransformerDashboard";
 
 import Navbar from "./components/Navbar.jsx";
 import Footer from "./components/Footer.jsx";
@@ -21,15 +22,12 @@ export default function App() {
           <Navbar />
 
           <Routes>
-          
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
 
-           
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
 
-            
             <Route
               path="/dashboard"
               element={
@@ -55,6 +53,11 @@ export default function App() {
                   <DemoReport />
                 </ProtectedRoute>
               }
+            />
+
+            <Route
+              path="/transformer-dashboard"
+              element={<TransformerDashboard />}
             />
           </Routes>
 

@@ -13,12 +13,15 @@ export default function Login() {
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    console.log("Login clicked");
 
     setErr("");
     setLoading(true);
 
     try {
       const res = await login(email, password);
+
+      console.log("LOGIN RESPONSE:", res);
 
       if (!res.ok) {
         setErr(res.message || "Login failed");
@@ -27,12 +30,36 @@ export default function Login() {
       }
 
       navigate("/");
-    } catch {
+    } catch (err) {
+      console.log("LOGIN ERROR:", err);
       setErr("Server error");
     }
 
     setLoading(false);
   };
+
+  // const onSubmit = async (e) => {
+  //   e.preventDefault();
+
+  //   setErr("");
+  //   setLoading(true);
+
+  //   try {
+  //     const res = await login(email, password);
+
+  //     if (!res.ok) {
+  //       setErr(res.message || "Login failed");
+  //       setLoading(false);
+  //       return;
+  //     }
+
+  //     navigate("/");
+  //   } catch {
+  //     setErr("Server error");
+  //   }
+
+  //   setLoading(false);
+  // };
 
   return (
     <div className="authWrap">
