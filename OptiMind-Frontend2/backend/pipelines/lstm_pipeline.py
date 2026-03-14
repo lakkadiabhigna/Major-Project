@@ -456,6 +456,8 @@ Nearby Festival: {row['Nearby_Festival']}
 Spike Info: {row['Spike_Explanation']}
 
 Explain demand and inventory insights in 5 sections.
+Keep under 200 words.
+End with: End of report.
 """
 
             response = client.chat.completions.create(
