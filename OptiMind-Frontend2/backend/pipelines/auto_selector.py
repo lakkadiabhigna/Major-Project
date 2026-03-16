@@ -7,13 +7,14 @@ from pipelines.transformer_pipeline import run_m5_transformer_full_pipeline
 def run_auto_forecasting_pipeline(
     df,
     lstm_model,
-    lstm_scaler_X,
+    lstm_scaler_x,
     lstm_scaler_y,
     lstm_le,
     transformer_model,
     transformer_scaler,
     transformer_config,
-    groq_api_key
+    groq_api_key,
+    base_date=None
 ):
 
     if any(col.startswith("d_") for col in df.columns):
@@ -24,7 +25,8 @@ def run_auto_forecasting_pipeline(
             transformer_model,
             transformer_scaler,
             transformer_config,
-            groq_api_key
+            groq_api_key,
+            base_date 
         )
 
         return result_df, "transformer"
@@ -36,7 +38,7 @@ def run_auto_forecasting_pipeline(
         result_df = run_optimind_pipeline(
             df,
             lstm_model,
-            lstm_scaler_X,
+            lstm_scaler_x,
             lstm_scaler_y,
             lstm_le,
             groq_api_key

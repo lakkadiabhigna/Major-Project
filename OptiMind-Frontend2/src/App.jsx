@@ -1,6 +1,8 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
+import Instructions from "./pages/Instructions";
+
 import Home from "./pages/Home.jsx";
 import About from "./pages/About.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
@@ -59,6 +61,8 @@ export default function App() {
               path="/transformer-dashboard"
               element={<TransformerDashboard />}
             />
+
+            <Route path="/instructions" element={<Instructions />} />
           </Routes>
 
           <Footer />

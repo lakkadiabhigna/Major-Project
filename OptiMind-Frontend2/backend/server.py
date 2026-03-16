@@ -1,5 +1,6 @@
 # # backend/server.py
 
+import csv
 import os
 import json
 from datetime import datetime, timedelta
@@ -15,8 +16,7 @@ import jwt
 import uvicorn
 from dotenv import load_dotenv
 from pymongo import MongoClient
-
-from fastapi import FastAPI, UploadFile, File, Response, Request
+from fastapi import FastAPI, UploadFile, File, Response, Request, Form
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -26,8 +26,9 @@ from pipelines.auto_selector import run_auto_forecasting_pipeline
 # ============================================================
 # LOAD ENV + CONNECT MONGODB (ATLAS)
 # ============================================================
+dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
 
-load_dotenv()
+load_dotenv(dotenv_path)
 
 MONGO_URI = os.getenv("MONGO_URI")
 if not MONGO_URI:
@@ -44,17 +45,22 @@ print("✅ MongoDB connected (Atlas)")
 # ============================================================
 
 app = FastAPI()
+
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000"
-    ],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 # ============================================================
 # ✅ Step 4: AUTH (Signup/Login/Remember User using httpOnly cookie)
 # ============================================================
@@ -227,26 +233,46 @@ def generate_transformer_analysis(df):
 
         total_products = len(df)
 
-        avg_predicted_demand = float(df["Predicted_Demand"].mean())
+        # Ensure transformer output includes both Forecasted_Demand and Predicted_Demand
+        # (frontend dashboards may expect Predicted_Demand)
+        if "Forecasted_Demand" in df.columns and "Predicted_Demand" not in df.columns:
+            df["Predicted_Demand"] = df["Forecasted_Demand"]
+
+        demand_key = "Forecasted_Demand" if "Forecasted_Demand" in df.columns else "Predicted_Demand"
+        avg_predicted_demand = float(df[demand_key].mean())
+
+        # Include additional columns for richer dashboards (EOQ, ROP, lead time, spikes, etc.)
+        columns_to_show = [
+            "SKU_ID",
+            "Forecasted_Demand",
+            "Predicted_Demand",
+            "EOQ",
+            "ROP",
+            "Lead_Time",
+            "Spike_Detected",
+            "Spike_Days",
+            "Max_Spike_Multiplier",
+            "Festival_Spike_Link",
+            "Demand_Explanation",
+            "Inventory_Explanation",
+            "Spike_Explanation",
+            "Manager_Explanation",
+        ]
 
         top_products = (
-            df.nlargest(5, "Predicted_Demand")[
-                ["SKU_ID", "Predicted_Demand", "Manager_Explanation"]
-            ].to_dict(orient="records")
+            df.nlargest(5, demand_key)[columns_to_show]
+            .to_dict(orient="records")
         )
 
         low_products = (
-            df.nsmallest(5, "Predicted_Demand")[
-                ["SKU_ID", "Predicted_Demand", "Manager_Explanation"]
-            ].to_dict(orient="records")
+            df.nsmallest(5, demand_key)[columns_to_show]
+            .to_dict(orient="records")
         )
 
-        demand_distribution = df["Predicted_Demand"].tolist()
+        demand_distribution = df[demand_key].tolist()
 
         insights = (
-            df[["SKU_ID", "Manager_Explanation"]]
-            .head(5)
-            .to_dict(orient="records")
+            df[columns_to_show].head(5).to_dict(orient="records")
         )
 
         analysis = {
@@ -255,7 +281,7 @@ def generate_transformer_analysis(df):
             "top_products": top_products,
             "low_products": low_products,
             "demand_distribution": demand_distribution,
-            "insights": insights
+            "insights": insights,
         }
 
         return analysis
@@ -270,7 +296,8 @@ def generate_alerts(df):
     alerts = []
 
     # High demand alert
-    high_demand = df.nlargest(3, "Forecasted_Demand")
+    demand_key = "Predicted_Demand" if "Predicted_Demand" in df.columns else "Forecasted_Demand"
+    high_demand = df.nlargest(3, demand_key)
 
     for _, row in high_demand.iterrows():
         alerts.append({
@@ -280,7 +307,7 @@ def generate_alerts(df):
         })
 
     # Low demand alert
-    low_demand = df.nsmallest(3, "Forecasted_Demand")
+    low_demand = df.nsmallest(3, demand_key)
 
     for _, row in low_demand.iterrows():
         alerts.append({
@@ -291,61 +318,12 @@ def generate_alerts(df):
 
     return alerts
     
-# @app.post("/forecast")
-# async def forecast(file: UploadFile = File(...)):
-#     try:
-#         print("📥 Received file:", file.filename)
 
-#         df = pd.read_csv(file.file)
-#         print("📊 Data shape:", df.shape)
-
-#         print("🚀 Starting auto forecasting pipeline...")
-
-#         groq_key = os.getenv("GROQ_API_KEY")
-#         print("🔑 GROQ KEY LOADED:", groq_key)
-
-#         result_df, model_type = run_auto_forecasting_pipeline(
-#     df,
-#     LSTM_MODEL,
-#     LSTM_SCALER_X,
-#     LSTM_SCALER_Y,
-#     LSTM_LE,
-#     TRANSFORMER_MODEL,
-#     TRANSFORMER_SCALER,
-#     TRANSFORMER_CONFIG,
-#     os.getenv("GROQ_API_KEY"),
-# )
-#         dashboard_analysis = generate_dashboard_analysis(result_df)
-
-#         if model_type == "lstm":
-#             dashboard_analysis = generate_dashboard_analysis(result_df)
-#         else:
-#             dashboard_analysis = generate_transformer_analysis(result_df)
-
-#         print("✅ Pipeline finished. Rows:", len(result_df))
-
-#         data_json = result_df.to_dict(orient="records")
-#         csv_string = result_df.to_csv(index=False)
-
-#         return JSONResponse(
-#     content={
-#         "status": "success",
-#         "rows": len(result_df),
-#         "model_type": model_type,
-#         "data": data_json,
-#         "csv": csv_string,
-#         "analysis": dashboard_analysis
-#     }
-# )
-
-#     except Exception as e:
-#         print("❌ ERROR:", str(e))
-#         return JSONResponse(
-#             content={"status": "error", "message": str(e)},
-#             status_code=500,
-#         )
 @app.post("/forecast")
-async def forecast(file: UploadFile = File(...)):
+async def forecast(
+    file: UploadFile = File(...),
+    base_date: str = Form(None)
+):
     try:
         print("📥 Received file:", file.filename)
 
@@ -365,6 +343,19 @@ async def forecast(file: UploadFile = File(...)):
 
         print("🚀 Starting auto forecasting pipeline...")
 
+        # ============================================================
+        # BASE DATE HANDLING (ONLY USED FOR TRANSFORMER)
+        # ============================================================
+
+        parsed_base_date = None
+
+        if base_date:
+            try:
+                parsed_base_date = datetime.strptime(base_date, "%Y-%m-%d")
+                print("📅 Base date received from user:", parsed_base_date)
+            except Exception:
+                raise ValueError("Invalid base_date format. Use YYYY-MM-DD")
+
         groq_key = os.getenv("GROQ_API_KEY")
         print("🔑 GROQ KEY LOADED:", groq_key)
 
@@ -378,6 +369,7 @@ async def forecast(file: UploadFile = File(...)):
             TRANSFORMER_SCALER,
             TRANSFORMER_CONFIG,
             os.getenv("GROQ_API_KEY"),
+            parsed_base_date   # 👈 NEW
         )
 
         if model_type == "lstm":
@@ -389,8 +381,7 @@ async def forecast(file: UploadFile = File(...)):
         result_df = result_df.replace([np.inf, -np.inf], np.nan).fillna(0)
 
         data_json = result_df.to_dict(orient="records")
-        csv_string = result_df.to_csv(index=False)
-
+        csv_string = result_df.to_csv(index=False, quoting=csv.QUOTE_ALL)
         return JSONResponse(
             content={
                 "status": "success",

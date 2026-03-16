@@ -5,15 +5,17 @@ export default function Upload() {
   useEffect(() => {
     localStorage.removeItem("forecast_analysis");
   }, []);
+
   const [file, setFile] = useState(null);
   const [fileErr, setFileErr] = useState("");
   const [validated, setValidated] = useState(false);
+  const [baseDate, setBaseDate] = useState("");
 
   const [status, setStatus] = useState("Idle");
   const [progress, setProgress] = useState(0);
 
   const [results, setResults] = useState([]);
-  const [csvData, setCsvData] = useState(""); // ✅ NEW
+  const [csvData, setCsvData] = useState("");
   const navigate = useNavigate();
 
   const canValidate = useMemo(() => !!file, [file]);
@@ -30,7 +32,7 @@ export default function Upload() {
     setStatus("Idle");
     setProgress(0);
     setResults([]);
-    setCsvData(""); // reset csv
+    setCsvData("");
 
     const f = e.target.files?.[0];
     if (!f) return;
@@ -44,7 +46,6 @@ export default function Upload() {
 
     setFile(f);
   };
-  
 
   const validateCsv = async () => {
     if (!file) return;
@@ -52,7 +53,6 @@ export default function Upload() {
     const name = file.name.toLowerCase();
 
     try {
-      // If CSV → validate its text content
       if (name.endsWith(".csv")) {
         const text = await file.text();
         const lines = text.split(/\r?\n/).filter((x) => x.trim() !== "");
@@ -63,7 +63,6 @@ export default function Upload() {
         }
       }
 
-      // If Excel → skip text validation
       if (name.endsWith(".xlsx")) {
         console.log("Excel file detected — skipping CSV validation.");
       }
@@ -74,7 +73,7 @@ export default function Upload() {
       setFileErr("Invalid file.");
     }
   };
-  // 🚀 REAL BACKEND CALL
+
   const runProcess = async () => {
     if (!file || !validated) return;
 
@@ -84,6 +83,10 @@ export default function Upload() {
     try {
       const formData = new FormData();
       formData.append("file", file);
+
+      if (baseDate) {
+        formData.append("base_date", baseDate);
+      }
 
       setStatus("Processing");
       setProgress(40);
@@ -102,12 +105,13 @@ export default function Upload() {
       }
 
       setResults(data.data);
-      setCsvData(data.csv); // ✅ STORE CSV
+      setCsvData(data.csv);
 
       setAnalysisData({
         ...data.analysis,
         model_type: data.model_type,
       });
+
       setProgress(100);
       setStatus("Completed");
     } catch (err) {
@@ -118,7 +122,6 @@ export default function Upload() {
     }
   };
 
-  // ✅ DOWNLOAD FUNCTION
   const downloadCsv = () => {
     if (!csvData) return;
 
@@ -135,9 +138,35 @@ export default function Upload() {
 
   return (
     <div className="page">
-      <h2 className="sectionHeading" style={{ marginTop: 0 }}>
-        Upload CSV
-      </h2>
+      {/* 🔹 HEADER WITH INSTRUCTIONS BUTTON */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "20px",
+        }}
+      >
+        <h2 className="sectionHeading" style={{ marginTop: 0 }}>
+          Upload CSV
+        </h2>
+        <button
+          onClick={() => navigate("/instructions")}
+          style={{
+            padding: "14px 28px",
+            backgroundColor: "#6366F1",
+            color: "white",
+            border: "none",
+            borderRadius: "8px",
+            cursor: "pointer",
+            fontWeight: "bold",
+            fontSize: "18px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+          }}
+        >
+          📘 Instructions
+        </button>
+      </div>
 
       <div
         className="aboutCard"
@@ -151,6 +180,17 @@ export default function Upload() {
           onChange={onPickFile}
           style={{ width: "100%", marginTop: 12 }}
         />
+
+        <div style={{ marginTop: 12 }}>
+          <label>Base Forecast Date (Required for Transformer):</label>
+
+          <input
+            type="date"
+            value={baseDate}
+            onChange={(e) => setBaseDate(e.target.value)}
+            style={{ marginLeft: 10 }}
+          />
+        </div>
 
         {file && (
           <div style={{ marginTop: 10 }}>
@@ -173,7 +213,6 @@ export default function Upload() {
             Run
           </button>
 
-          {/* ✅ DOWNLOAD BUTTON */}
           {results.length > 0 && (
             <button onClick={downloadCsv}>Download Results</button>
           )}
@@ -203,7 +242,6 @@ export default function Upload() {
         </div>
       </div>
 
-      {/* 🔥 DISPLAY RESULTS */}
       {results.length > 0 && (
         <div
           className="aboutCard"
@@ -225,6 +263,7 @@ export default function Upload() {
                   ))}
                 </tr>
               </thead>
+
               <tbody>
                 {results.map((row, i) => (
                   <tr key={i}>
