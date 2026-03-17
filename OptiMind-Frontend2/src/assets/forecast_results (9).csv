@@ -1,0 +1,228 @@
+"SKU_ID","Nearby_Festival","Forecasted_Demand","EOQ","ROP","Lead_Time","Spike_Detected","Spike_Days","Max_Spike_Multiplier","Festival_Spike_Link","Demand_Explanation","Inventory_Explanation","Spike_Explanation","Manager_Explanation"
+"SKU_1","Ambedkar Jayanti, Chaitra Sukhladi, Easter Day, Good Friday, Gudi Padwa, Mahavir Jayanti, Mesadi / Vaisakhadi, Ugadi, Vaisakhi","1004.6400146484375","511","683","15","True","[1, 17, 18, 19, 20]","1.0520215034484863","The spike may be influenced by the nearby festival: Ambedkar Jayanti, Chaitra Sukhladi, Easter Day, Good Friday, Gudi Padwa, Mahavir Jayanti, Mesadi / Vaisakhadi, Ugadi, Vaisakhi.","Demand for SKU_1 is driven by recent 28-day sales momentum captured by the LSTM forecasting model.","Based on demand variability, order 511 units and reorder when inventory reaches 683 units with an estimated lead time of 15 days.","For SKU_1, a spike has been detected on days 1, 17, 18, 19, and 20. Given the nearby festivals, including Easter Day and Good Friday, it's possible that the spike may be influenced by festival demand. Further analysis would be required to determine the exact impact of these festivals on SKU_1's demand.","**Demand and Inventory Insights for SKU_1**
+
+**1. Predicted Demand**
+Predicted monthly demand for SKU_1 is 1004.64 units, indicating a moderate to high demand level.
+
+**2. Economic Order Quantity (EOQ)**
+The calculated EOQ for SKU_1 is 511 units. This suggests that ordering this quantity regularly will help minimize holding costs and ordering costs.
+
+**3. Reorder Point (ROP)**
+The ROP for SKU_1 is set at 683 units. This means that when the inventory level falls below 683 units, a new order should be placed to maintain optimal inventory levels.
+
+**4. Seasonality and Festivals**
+The nearby festivals, including Easter Day and Good Friday, may impact SKU_1's demand. A spike in demand has been detected on specific days, which could be related to these festivals. Further analysis is required to determine the exact impact of these festivals on SKU_1's demand.
+
+**5. Inventory Management**
+Considering the predicted demand and EOQ, it is recommended to maintain a buffer stock above the ROP to ensure timely replenishment and meet customer demand."
+"SKU_10","Vasant Panchami","1126.25","549","702","14","True","[1, 2, 3]","1.1753777265548706","The spike may be influenced by the nearby festival: Vasant Panchami.","Demand for SKU_10 is driven by recent 28-day sales momentum captured by the LSTM forecasting model.","Based on demand variability, order 549 units and reorder when inventory reaches 702 units with an estimated lead time of 14 days.","A spike in demand has been detected for SKU_10 on days 1, 2, and 3, with a multiplier of 1.1753777265548706, indicating a significant increase in sales. Given that Vasant Panchami, a nearby festival, may have contributed to this spike, it's possible that the surge in demand is related to festival-related purchases.","**Demand Insights**
+
+- Predicted Monthly Demand: 1126.25 units for SKU_10, indicating a steady sales trend.
+- Spike in demand detected on days 1, 2, and 3, with a multiplier of 1.1753777265548706, suggesting a significant increase in sales.
+
+**Inventory Insights**
+
+- EOQ (Economic Order Quantity) for SKU_10 is 549 units, suggesting an optimal inventory level to balance holding costs and ordering costs.
+
+**Inventory Levels**
+
+- Considering the predicted monthly demand and the spike in demand, it's essential to maintain a buffer stock to meet the increased demand during the festival period.
+
+**Festival Impact**
+
+- The nearby festival, Vasant Panchami, may have contributed to the spike in demand for SKU_10, indicating a potential increase in sales during festival-related purchases.
+
+**Action Plan**
+
+- Review and adjust inventory levels to accommodate the increased demand during the festival period.
+- Monitor sales data closely to ensure timely replenishment of stock.
+
+End of report."
+"SKU_2","Chaitra Sukhladi, Gudi Padwa, Ugadi","1027.9599609375","518","697","15","True","[1, 2]","1.070452332496643","The spike may be influenced by the nearby festival: Chaitra Sukhladi, Gudi Padwa, Ugadi.","Demand for SKU_2 is driven by recent 28-day sales momentum captured by the LSTM forecasting model.","Based on demand variability, order 518 units and reorder when inventory reaches 697 units with an estimated lead time of 15 days.","Demand analysis for SKU_2 indicates a spike in sales, with a multiplier of 1.070452332496643 over days 1 and 2. Given that a nearby festival, Chaitra Sukhladi, Gudi Padwa, or Ugadi, is taking place, it is possible that the spike is influenced by increased demand due to the festival.","**Demand Insights**
+
+For SKU_2, the predicted monthly demand is 1027.96 units. This indicates a moderate to high demand for the product. However, a spike in sales is expected, with a multiplier of 1.070452332496643 over the first two days, suggesting a potential increase in demand due to the nearby festival.
+
+**Inventory Insights**
+
+The Economic Order Quantity (EOQ) for SKU_2 is 518 units. This suggests that maintaining an inventory level of 518 units will minimize the total cost of ordering and holding inventory. However, the Recommended Order Point (ROP) is 697 units, indicating that the optimal inventory level is slightly higher than the EOQ.
+
+**Seasonality**
+
+The nearby festival, Chaitra Sukhladi, Gudi Padwa, or Ugadi, may influence demand for SKU_2. This suggests that the demand for the product may be seasonal, with higher demand during the festival period.
+
+**Spike Analysis**
+
+The demand analysis indicates a spike in sales for SKU_2, with a multiplier of 1.070452332496643 over the first two days. This suggests that the product may experience a surge in demand during the festival period.
+
+**Inventory Recommendations**
+
+Given the predicted spike in demand, it is recommended to maintain a higher inventory level for SKU_2 to ensure that sufficient stock is available to meet the increased demand.
+
+End of report."
+"SKU_3","None","1033.3499755859375","522","695","15","False","[]","0.0","No festival-driven spike detected.","Demand for SKU_3 is driven by recent 28-day sales momentum captured by the LSTM forecasting model.","Based on demand variability, order 522 units and reorder when inventory reaches 695 units with an estimated lead time of 15 days.","Demand for SKU_3 appears to be stable, as there is no spike detected. However, since a nearby festival has been detected, it's possible that the festival demand may be influencing the current demand patterns.","**Demand Insights**
+
+- Predicted Monthly Demand for SKU_3 is 1033.3499755859375 units.
+- The demand appears to be stable with no spike detected.
+- However, the presence of a nearby festival may be influencing the current demand patterns.
+
+**Inventory Insights**
+
+- The Economic Order Quantity (EOQ) for SKU_3 is 522 units.
+- The Reorder Point (ROP) is set at 695 units.
+
+**Impact of Nearby Festival**
+
+- The nearby festival may be contributing to the current demand patterns for SKU_3.
+- This could potentially lead to increased demand in the coming months.
+
+**Inventory Strategy**
+
+- To mitigate the potential impact of the festival, consider increasing the ROP to account for the increased demand.
+- Monitor demand closely to adjust inventory levels accordingly.
+
+**Action Plan**
+
+- Review and adjust the inventory strategy based on the predicted demand and ROP.
+- Consider implementing a more robust inventory management system to account for seasonal fluctuations.
+
+End of report."
+"SKU_4","Ganesh Chaturthi/Vinayaka Chaturthi","1051.4599609375","527","663","14","True","[1]","1.0604044198989868","The spike may be influenced by the nearby festival: Ganesh Chaturthi/Vinayaka Chaturthi.","Demand for SKU_4 is driven by recent 28-day sales momentum captured by the LSTM forecasting model.","Based on demand variability, order 527 units and reorder when inventory reaches 663 units with an estimated lead time of 14 days.","Demand for SKU_4 has experienced a significant spike, indicated by a multiplier of 1.0604044198989868 over a single day. Given that a nearby festival, Ganesh Chaturthi/Vinayaka Chaturthi, is occurring, it's possible that the spike is influenced by increased demand driven by the festival. Further analysis would be necessary to confirm this correlation.","**Demand Insights**
+
+- Predicted Monthly Demand for SKU_4 is 1051.4599609375 units.
+- A significant spike in demand was observed, with a multiplier of 1.0604044198989868 over a single day.
+- The nearby festival, Ganesh Chaturthi/Vinayaka Chaturthi, may be influencing the spike in demand.
+
+**Inventory Insights**
+
+- The Economic Order Quantity (EOQ) for SKU_4 is 527 units.
+- The Reorder Point (ROP) is set at 663 units, indicating that inventory should be replenished when stock falls below this threshold.
+
+**Impact of Spike**
+
+- The demand spike may indicate increased sales driven by the festival, suggesting a potential opportunity to capitalize on this trend.
+- However, further analysis is necessary to confirm the correlation between the festival and the spike in demand.
+
+**Risk Assessment**
+
+- Insufficient inventory may lead to stockouts and lost sales if the demand spike is not accurately forecasted.
+- Overstocking may occur if the demand spike is not sustained, leading to inventory waste.
+
+**Recommendations**
+
+- Conduct further analysis to confirm the correlation between the festival and the demand spike.
+- Review and adjust inventory levels and ROP as necessary to mitigate the risk of stockouts and overstocking.
+
+End of report."
+"SKU_5","Chhat Puja (Pratihar Sashthi/Surya Sashthi)","1066.239990234375","533","667","14","True","[1, 2, 3, 4, 5]","1.0906004905700684","The spike may be influenced by the nearby festival: Chhat Puja (Pratihar Sashthi/Surya Sashthi).","Demand for SKU_5 is driven by recent 28-day sales momentum captured by the LSTM forecasting model.","Based on demand variability, order 533 units and reorder when inventory reaches 667 units with an estimated lead time of 14 days.","A spike in demand has been detected for SKU_5 on days 1 through 5. Given that the Chhat Puja (Pratihar Sashthi/Surya Sashthi) festival is nearby, it's likely that the spike is influenced by increased demand due to the festival. This means the observed demand may not be a true representation of the product's baseline demand.","**Demand Insights**
+
+- Predicted Monthly Demand for SKU_5 is 1066.239990234375 units.
+- A spike in demand has been detected for SKU_5 on days 1 through 5, likely influenced by the nearby Chhat Puja (Pratihar Sashthi/Surya Sashthi) festival.
+
+**Inventory Insights**
+
+- The Economic Order Quantity (EOQ) for SKU_5 is 533 units, indicating the optimal quantity to order to minimize holding and ordering costs.
+- The Reorder Point (ROP) for SKU_5 is 667 units, indicating the point at which inventory should be replenished to avoid stockouts.
+
+**Spike Effect on Demand**
+
+- The detected spike in demand may not accurately represent the product's baseline demand due to the festival's influence.
+- It's essential to consider this spike when planning inventory and ordering decisions.
+
+**Action Plan**
+
+- Monitor demand closely during the festival period to adjust inventory levels accordingly.
+- Consider ordering additional units before the festival to avoid stockouts.
+
+**End of Report.**"
+"SKU_6","Chhat Puja (Pratihar Sashthi/Surya Sashthi)","1079.22998046875","537","673","14","True","[1, 2, 3, 4]","1.1001060009002686","The spike may be influenced by the nearby festival: Chhat Puja (Pratihar Sashthi/Surya Sashthi).","Demand for SKU_6 is driven by recent 28-day sales momentum captured by the LSTM forecasting model.","Based on demand variability, order 537 units and reorder when inventory reaches 673 units with an estimated lead time of 14 days.","A spike in demand for SKU_6 has been detected on days 1-4, with a multiplier of 1.1001060009002686. Considering that a nearby festival, Chhat Puja (Pratihar Sashthi/Surya Sashthi), is occurring, it is likely that the spike is influenced by increased demand due to the festival. This suggests that the spike may not be a one-time anomaly, but rather a seasonal fluctuation driven by the festival.","**Demand Insights**
+
+- Predicted monthly demand for SKU_6 is 1079.22998046875 units, indicating a steady and consistent demand pattern.
+- However, a spike in demand has been detected on days 1-4, with a multiplier of 1.1001060009002686, suggesting a seasonal fluctuation driven by the nearby festival, Chhat Puja (Pratihar Sashthi/Surya Sashthi).
+
+**Inventory Insights**
+
+- The Economic Order Quantity (EOQ) for SKU_6 is 537 units, which is the optimal order quantity to balance holding costs and ordering costs.
+- The Reorder Point (ROP) is set at 673 units, indicating that when the inventory level falls below this threshold, a new order should be placed to avoid stockouts.
+
+**Seasonal Fluctuation**
+
+- The spike in demand is likely influenced by the nearby festival, which suggests that the demand pattern may be seasonal.
+- This seasonal fluctuation should be taken into account when managing inventory levels to avoid stockouts and overstocking.
+
+**Action Plan**
+
+- Monitor demand closely during the festival period to adjust inventory levels accordingly.
+- Consider increasing inventory levels before the festival to avoid stockouts.
+
+**End of report.**"
+"SKU_7","None","1076.239990234375","559","546","12","True","[1, 2, 3]","1.1334649324417114","No festival-driven spike detected.","Demand for SKU_7 is driven by recent 28-day sales momentum captured by the LSTM forecasting model.","Based on demand variability, order 559 units and reorder when inventory reaches 546 units with an estimated lead time of 12 days.","Demand for SKU_7 is experiencing a spike, with sales increasing by a multiplier of 1.1334649324417114 on days 1, 2, and 3. However, since there is no nearby festival, it's likely that the spike is driven by internal factors such as marketing campaigns or promotions rather than external events.","**Demand Insights**
+
+- Predicted monthly demand for SKU_7 is 1076.239990234375 units.
+- The demand is experiencing a spike, with sales increasing by a multiplier of 1.1334649324417114 on days 1, 2, and 3, indicating a potential increase in demand due to internal factors such as marketing campaigns or promotions.
+
+**Inventory Insights**
+
+- The Economic Order Quantity (EOQ) for SKU_7 is 559 units, suggesting that the optimal order quantity is around this value to minimize holding costs and ordering costs.
+- The Reorder Point (ROP) is 546 units, indicating that the inventory level should be replenished when it falls below this threshold to avoid stockouts.
+
+**Impact of Spike**
+
+- The spike in demand is likely driven by internal factors, as there are no nearby festivals that could influence external demand.
+- This spike may require adjustments to the inventory management strategy to ensure that sufficient stock is available to meet the increased demand.
+
+**Action Plan**
+
+- Monitor the demand spike and adjust the inventory level accordingly.
+- Consider adjusting the ROP to account for the increased demand.
+
+**Inventory Recommendation**
+
+- Order additional stock to meet the increased demand, considering the EOQ and ROP.
+
+End of report."
+"SKU_8","None","1087.56005859375","562","550","12","True","[1, 2, 3]","1.1405633687973022","No festival-driven spike detected.","Demand for SKU_8 is driven by recent 28-day sales momentum captured by the LSTM forecasting model.","Based on demand variability, order 562 units and reorder when inventory reaches 550 units with an estimated lead time of 12 days.","Demand for SKU_8 is currently experiencing a spike, with sales significantly higher than usual on days 1, 2, and 3. The spike multiplier of 1.14 indicates a notable increase in demand. Since there is no nearby festival, it's likely that the spike is due to internal factors such as marketing promotions or supply chain issues.","**Demand Insights**
+
+- Predicted Monthly Demand for SKU_8 is 1087.56005859375 units.
+- The current spike in demand indicates a notable increase in sales, with a spike multiplier of 1.14 for days 1, 2, and 3.
+
+**Inventory Insights**
+
+- The Economic Order Quantity (EOQ) for SKU_8 is 562 units.
+- The Reorder Point (ROP) for SKU_8 is 550 units.
+
+**Spike Analysis**
+
+- The spike in demand appears to be internal, as there are no nearby festivals influencing sales.
+- Potential causes for the spike include marketing promotions or supply chain issues.
+
+**Inventory Action**
+
+- To mitigate the risk of stockouts, consider reordering inventory as soon as possible to meet the increased demand.
+- Monitor inventory levels closely to ensure timely replenishment.
+
+**Recommendation**
+
+- Review marketing strategies and supply chain operations to identify and address potential causes of the spike.
+
+End of report."
+"SKU_9","Vasant Panchami","1119.1300048828125","547","699","14","True","[1, 2, 3]","1.1701831817626953","The spike may be influenced by the nearby festival: Vasant Panchami.","Demand for SKU_9 is driven by recent 28-day sales momentum captured by the LSTM forecasting model.","Based on demand variability, order 547 units and reorder when inventory reaches 699 units with an estimated lead time of 14 days.","A spike in demand has been detected for SKU_9, occurring on days 1, 2, and 3. Given that the nearby festival is Vasant Panchami, it is likely that the spike is influenced by increased demand driven by the festival. This suggests that festival-related events may be contributing to the observed spike in demand for SKU_9.","**Demand Insights**
+
+- Predicted Monthly Demand for SKU_9 is 1119.1300048828125 units. This indicates a moderate level of demand for the product.
+- A spike in demand has been detected for SKU_9 on days 1, 2, and 3, which may be influenced by the nearby festival Vasant Panchami.
+
+**Inventory Insights**
+
+- The Economic Order Quantity (EOQ) for SKU_9 is 547 units. This suggests that the optimal order quantity for the product is around 547 units.
+- The Reorder Point (ROP) for SKU_9 is 699 units. This indicates that the inventory level should be maintained at or above 699 units to avoid stockouts.
+
+**Festival Impact**
+
+- The nearby festival Vasant Panchami is likely contributing to the observed spike in demand for SKU_9.
+- This suggests that the demand for SKU_9 may be influenced by seasonal and event-driven factors.
+
+**Actionable Recommendations**
+
+- Monitor inventory levels closely during the festival period to avoid stockouts.
+- Consider increasing the reorder point to account for the potential spike in demand.
+
+**End of Report.**"
