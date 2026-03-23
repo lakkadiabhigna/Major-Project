@@ -3,6 +3,7 @@
 import pandas as pd
 import numpy as np
 from groq import Groq
+import shap
 
 
 def run_optimind_pipeline(
@@ -104,6 +105,31 @@ def run_optimind_pipeline(
             return ", ".join(set(festivals))
 
         return "None"
+    
+
+    # -----------------------------
+    # INITIALIZE SHAP EXPLAINER
+    # -----------------------------
+    print("🔍 Initializing SHAP Explainer...")
+
+    # Use a small sample for background
+    sample_data = []
+
+    for _, sku_df in df.groupby("Encoded_SKU"):
+        if len(sku_df) >= LOOKBACK:
+            last_28 = sku_df["Units_Sold_Log"].values[-LOOKBACK:]
+            window = scaler_X.transform(last_28.reshape(-1, 1)).reshape(LOOKBACK, 1)
+            sample_data.append(window)
+
+        if len(sample_data) >= 50:
+            break
+
+    background = np.array(sample_data)
+
+    explainer = shap.KernelExplainer(
+        lambda x: model.predict(x.reshape(-1, LOOKBACK, 1)).flatten(),
+        background.reshape(len(background), -1)
+    )
 
     # -----------------------------
     # FORECASTING + SPIKE DETECTION
@@ -123,6 +149,26 @@ def run_optimind_pipeline(
         last_28 = sku_df["Units_Sold_Log"].values[-LOOKBACK:]
 
         window = scaler_X.transform(last_28.reshape(-1, 1)).reshape(1, LOOKBACK, 1)
+
+                # -----------------------------
+        # SHAP EXPLANATION
+        # -----------------------------
+        try:
+            shap_input = window.reshape(1, -1)
+
+            shap_values = explainer.shap_values(shap_input)
+
+            shap_values = shap_values[0]
+
+            # Find most important time steps
+            top_indices = np.argsort(np.abs(shap_values))[-3:]
+
+            important_days = [int(i) for i in top_indices]
+
+            xai_text = f"Recent demand pattern influenced prediction. Key contributing days in lookback window: {important_days}"
+
+        except Exception as e:
+            xai_text = f"XAI generation failed: {str(e)}"
 
         preds_30 = []
 
@@ -220,7 +266,8 @@ def run_optimind_pipeline(
             "Lead_Time": dynamic_lead_time,
             "Spike_Detected": spike_info["Spike_Detected"],
             "Spike_Days": spike_info["Spike_Days"],
-            "Max_Spike_Multiplier": spike_info["Max_Spike_Multiplier"]
+            "Max_Spike_Multiplier": spike_info["Max_Spike_Multiplier"],
+            "XAI_Explanation": xai_text
         })
 
     forecast_df = pd.DataFrame(forecast_rows)
@@ -336,3 +383,5 @@ End with: End of report.
     print("🏁 LSTM PIPELINE COMPLETE\n")
 
     return forecast_df
+
+
