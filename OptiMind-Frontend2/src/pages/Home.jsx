@@ -7,7 +7,7 @@ export default function Home() {
   return (
     <section className="hero heroSingle">
       <div className="heroLeft">
-        <h1 className="pageTitle">OptiMind: AI-Powered Supply Network Intelligence</h1>
+        <h1 className="pageTitle">OptiMind: Deep Learning and Transformer Powered Supply Network</h1>
 
         <p className="subtext">
           OptiMind is a decision-support system that combines deep learning and transformer-based
